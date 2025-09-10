@@ -9,30 +9,35 @@ if (!fs.existsSync(tiles_dir)) {
 }
 
 const backup_short_codes = (short_codes, cb) => {
+
+   let filename
+   let localSavePath
+   while (short_codes.length > 0) {
+      const remaining = short_codes.length
+      if (remaining % 100 === 0) {
+         console.log(`${remaining} remain`)
+      }
+      const short_code = short_codes.pop()
+      const level = short_code.length
+      const naught = level < 10 ? '0' : ''
+      const level_dirname = `L${naught}${level}`
+      const tiles_dir = "./tiles";
+      const level_dir = `${tiles_dir}/${level_dirname}`
+      if (!fs.existsSync(level_dir)) {
+         fs.mkdirSync(level_dir)
+      }
+      filename = `${level_dirname}/${short_code}.gz`
+      localSavePath = `${tiles_dir}/${filename}`; // Path to save the .gz file locally
+      if (!fs.existsSync(localSavePath)) {
+         break
+      }
+   }
    if (!short_codes.length) {
       console.log('complete')
       cb()
       return;
    }
-   const remaining = short_codes.length
-   if (remaining % 100 === 0) {
-      console.log(`${remaining} remain`)
-   }
-   const short_code = short_codes.pop()
-   const level = short_code.length
-   const naught = level < 10 ? '0' : ''
-   const level_dirname = `L${naught}${level}`
-   const tiles_dir = "./tiles";
-   const level_dir = `${tiles_dir}/${level_dirname}`
-   if (!fs.existsSync(level_dir)) {
-      fs.mkdirSync(level_dir)
-   }
-   const filename = `${level_dirname}/${short_code}.gz`
-   const localSavePath = `${tiles_dir}/${filename}`; // Path to save the .gz file locally
-   if (fs.existsSync(localSavePath)) {
-      backup_short_codes(short_codes, cb)
-      return;
-   }
+
    const fileStream = fs.createWriteStream(localSavePath);
    const remoteGzUrl = `${network["fracto-prod"]}/${filename}`
    https.get(remoteGzUrl, (response) => {
