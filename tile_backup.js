@@ -13,12 +13,12 @@ const backup_short_codes = (short_codes, cb) => {
    let filename
    let localSavePath
    while (short_codes.length > 0) {
-      const remaining = short_codes.length
-      if (remaining % 100 === 0) {
-         console.log(`${remaining} remain`)
-      }
       const short_code = short_codes.pop()
       const level = short_code.length
+      const remaining = short_codes.length
+      if (remaining % 100 === 0) {
+         console.log(`[${level}] ${remaining} remain`)
+      }
       const naught = level < 10 ? '0' : ''
       const level_dirname = `L${naught}${level}`
       const tiles_dir = "./tiles";
@@ -48,18 +48,18 @@ const backup_short_codes = (short_codes, cb) => {
       });
       fileStream.on('error', (err) => {
          console.error('Error writing to file:', err);
-         exit(1)
+         backup_short_codes(short_codes, cb)
       });
    }).on('error', (err) => {
       console.error('Error downloading file:', err);
-      exit(1)
+      backup_short_codes(short_codes, cb)
    });
 }
 
 const backup_level_short_codes = (level_short_codes) => {
    if (!level_short_codes.length) {
       console.log('complete')
-      exit(1)
+      return
    }
    const short_codes = level_short_codes.pop()
    const level = short_codes[0].length
