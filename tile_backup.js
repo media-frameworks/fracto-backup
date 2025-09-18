@@ -8,14 +8,14 @@ if (!fs.existsSync(tiles_dir)) {
    fs.mkdirSync(tiles_dir)
 }
 
-const backup_short_codes = (short_codes, cb) => {
-
+const backup_short_codes = (short_codes, starting_index, cb) => {
+   let index = starting_index
    let filename
    let localSavePath
-   while (short_codes.length > 0) {
-      const short_code = short_codes.pop()
+   while (index < short_codes.length) {
+      const short_code = short_codes.at(index++)
       const level = short_code.length
-      const remaining = short_codes.length
+      const remaining = short_codes.length - index
       if (remaining % 100 === 0) {
          console.log(`[${level}] ${remaining} remain`)
       }
@@ -32,7 +32,7 @@ const backup_short_codes = (short_codes, cb) => {
          break
       }
    }
-   if (!short_codes.length) {
+   if (index >= short_codes.length) {
       console.log('complete')
       cb()
       return;
@@ -44,15 +44,15 @@ const backup_short_codes = (short_codes, cb) => {
       response.pipe(fileStream);
       fileStream.on('finish', () => {
          fileStream.close();
-         backup_short_codes(short_codes, cb)
+         backup_short_codes(short_codes, index, cb)
       });
       fileStream.on('error', (err) => {
          console.error('Error writing to file:', err);
-         backup_short_codes(short_codes, cb)
+         backup_short_codes(short_codes, index, cb)
       });
    }).on('error', (err) => {
       console.error('Error downloading file:', err);
-      backup_short_codes(short_codes, cb)
+      backup_short_codes(short_codes, index, cb)
    });
 }
 
@@ -64,7 +64,7 @@ const backup_level_short_codes = (level_short_codes) => {
    const short_codes = level_short_codes.pop()
    const level = short_codes[0].length
    console.log(`backing up level ${level} (${short_codes.length} tiles)`)
-   backup_short_codes(short_codes, () => {
+   backup_short_codes(short_codes, 0, () => {
       backup_level_short_codes(level_short_codes)
    })
 }
