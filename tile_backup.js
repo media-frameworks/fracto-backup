@@ -77,6 +77,8 @@ FractoIndexedTiles.load_short_codes('indexed', short_codes => {
       level_short_codes.push(short_codes_for_level)
    }
    backup_level_short_codes(level_short_codes, () => {
+      return;
+      // Comment the line above to clear the updateable tiles
       FractoIndexedTiles.load_short_codes('needs_update', short_codes => {
          short_codes.forEach((short_code, index) => {
             const level = short_code.length
