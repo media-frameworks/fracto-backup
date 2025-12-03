@@ -1,4 +1,7 @@
-import network from "./../common/config/network.json" with { type: "json" };
+import network from "./../common/config/network.json" with {type: "json"};
+
+import fetch from 'node-fetch';
+import csv from 'csv-parser';
 
 const URL_BASE = network["fracto-prod"];
 // const SERVER_BASE = network.fracto_server_url;
@@ -17,6 +20,45 @@ const ALL_TILE_SETS = [
    TILE_SET_EMPTY,
    TILE_SET_UPDATED,
 ]
+
+var results = [];
+
+async function streamCsvFromUrl(url, cb) {
+   try {
+      // 1. Fetch the remote resource and get a readable stream
+      const response = await fetch(url);
+
+      if (!response.ok) {
+         throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      results = []
+
+      // 2. Pipe the response body stream to the csv-parser transform stream
+      response.body // This is a Node.js ReadableStream
+         .pipe(csv()) // Transform stream converts CSV chunks to JS objects
+         .on('data', (data) => {
+            // 3. Process each row of data as it comes in
+            results.push(data.short_code);
+
+            if (results.length % 100000 === 0) {
+               console.log(results.length, data.short_code);
+            }
+         })
+         .on('end', () => {
+            // 4. Handle the end of the stream
+            console.log('Finished reading CSV file.');
+            console.log(`Total rows processed: ${results.length}`);
+            cb(results);
+            // console.log('All results:', results);
+         })
+         .on('error', (error) => {
+            // 5. Handle any errors during streaming or parsing
+            console.error('Error during CSV processing:', error);
+         });
+   } catch (error) {
+      console.error('Fetch operation failed:', error);
+   }
+}
 
 export class FractoIndexedTiles {
 
@@ -66,20 +108,15 @@ export class FractoIndexedTiles {
          return;
       }
       if (packet_data.columns.length) {
-         packet_data.columns.forEach(column=> set_level.columns.push(column))
+         packet_data.columns.forEach(column => set_level.columns.push(column))
       }
    }
 
    static load_short_codes = (tile_set_name, cb) => {
       const directory_url = `${URL_BASE}/manifest/${tile_set_name}.csv`;
-      console.log('load_short_codes', directory_url)
-      fetch(directory_url)
-         .then(response => response.text())
-         .then(csv => {
-            const lines = csv.split("\n");
-            console.log(`load_short_codes ${tile_set_name} ${lines.length}`)
-            cb(lines.slice(1))
-         })
+      streamCsvFromUrl(directory_url, result => {
+         cb(result)
+      })
    }
 
    static tiles_in_level = (level, set_name = TILE_SET_INDEXED) => {
@@ -106,7 +143,7 @@ export class FractoIndexedTiles {
                }
             })
          if (column_tiles.length) {
-            column_tiles.forEach(tile=> short_codes.push(tile))
+            column_tiles.forEach(tile => short_codes.push(tile))
          }
       }
       return short_codes.sort((a, b) => {
@@ -151,14 +188,14 @@ export class FractoIndexedTiles {
          const column_left = columns[column_index].left
          const column_tiles = tiles_in_column
             .filter(tile => {
-                  if (tile.bottom > viewport.top) {
-                     return false
-                  }
-                  if (tile.bottom + set_level.tile_size < viewport.bottom) {
-                     return false
-                  }
-                  return true
-               })
+               if (tile.bottom > viewport.top) {
+                  return false
+               }
+               if (tile.bottom + set_level.tile_size < viewport.bottom) {
+                  return false
+               }
+               return true
+            })
             .map(tile => {
                return {
                   bounds: {
